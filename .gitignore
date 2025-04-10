@@ -4,6 +4,8 @@
 *.exe
 pd.*.z64
 build
+build-xbox
+.DS_Store
 .flatpak-builder
 extracted
 src/assets/*/*.bin

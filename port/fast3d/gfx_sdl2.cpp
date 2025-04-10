@@ -182,13 +182,21 @@ static void gfx_sdl_init(const struct GfxWindowInitSettings *set) {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, vmin);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, vprof);
 
+        #ifdef __XBOX_BUILD
+        wnd = SDL_GL_GetCurrentWindow();
+        #else
         wnd = SDL_CreateWindow(set->title, posX, posY, window_width, window_height, flags);
+        #endif
         if (!wnd) {
             sysLogPrintf(LOG_WARNING, "SDL: could not open SDL window for GL%d.%d%s:\n%s", vmaj, vmin, vprofstr, SDL_GetError());
             continue;
         }
 
+        #ifdef __XBOX_BUILD
+        ctx = SDL_GL_GetCurrentContext();
+        #else
         ctx = SDL_GL_CreateContext(wnd);
+        #endif
         if (!ctx) {
             sysLogPrintf(LOG_WARNING, "SDL: could not create GL%d.%d%s context: %s", vmaj, vmin, vprofstr, SDL_GetError());
             SDL_DestroyWindow(wnd);

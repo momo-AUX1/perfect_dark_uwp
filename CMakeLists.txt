@@ -11,6 +11,12 @@ if(APPLE)
   endif()
 endif()
 
+option(XBOX_BUILD "Build for Xbox" OFF)
+
+if(XBOX_BUILD)
+    add_definitions(-D__XBOX_BUILD)
+endif()
+
 project(pd C CXX)
 
 include(TargetArch)
@@ -339,13 +345,22 @@ add_custom_target(pd_headers ALL DEPENDS ${JSON_HEADERS})
 # Game target
 
 set(BIN_NAME "pd${BIN_REGION}.${TARGET_ARCH}")
-add_executable(pd ${SRC})
+
+if(XBOX_BUILD)
+    # Build as a shared library
+    add_library(pd SHARED ${SRC})
+else()
+    # Build as an executable
+    add_executable(pd ${SRC})
+    if(WIN32)
+        set_target_properties(pd PROPERTIES WIN32_EXECUTABLE TRUE)
+    endif()
+endif()
+
+# Common properties and dependencies
 add_dependencies(pd pd_headers)
 target_link_libraries(pd ${LIBS})
 set_target_properties(pd PROPERTIES OUTPUT_NAME "${BIN_NAME}")
-if(WIN32)
-  set_target_properties(pd PROPERTIES WIN32_EXECUTABLE TRUE)
-endif()
 
 # Additional commands for specific platforms.
 
