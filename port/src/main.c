@@ -99,6 +99,9 @@ static void cleanup(void)
 #include <SDL.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <errno.h>
 #include "glad/glad.h"
 
 #ifdef __cplusplus
@@ -115,43 +118,37 @@ static void cleanup(void)
   #endif
 #endif
 
-// Forward declaration of main so that external_main can call it.
 int main(int argc, const char **argv);
 
 EXPORT_API int external_main(SDL_Window *window, SDL_GLContext context, int argc, const char **argv)
 {
-    // Set LOCAL_STATE_PATH if provided in the arguments.
-    if (argc >= 3 && argv[2]) {
-        #ifdef _WIN32
-            _putenv_s("LOCAL_STATE_PATH", argv[2]);
-        #else
-            setenv("LOCAL_STATE_PATH", argv[2], 1);
-        #endif
-    }
+    const char *localStatePath = NULL;
+    if (argc >= 3 && argv[2])
+        localStatePath = argv[2];
+#ifdef _WIN32
+    if (localStatePath) _putenv_s("LOCAL_STATE_PATH", localStatePath);
+#else
+    if (localStatePath) setenv("LOCAL_STATE_PATH", localStatePath, 1);
+#endif
 
     if (window) {
-        // CANE WE FORCE A 4.1 CONTEXT PLEASE
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-
         if (context) {
             SDL_GL_DeleteContext(context);
             context = NULL;
         }
-
         context = SDL_GL_CreateContext(window);
         if (!context) {
             fprintf(stderr, "Failed to create 4.1 context: %s\n", SDL_GetError());
             return 1;
         }
         if (SDL_GL_MakeCurrent(window, context) != 0) {
-            fprintf(stderr, "Failed to make new 4.1 context current: %s\n", SDL_GetError());
+            fprintf(stderr, "Failed to make 4.1 context current: %s\n", SDL_GetError());
             return 1;
         }
-
         printf("Forced and loaded 4.1 GL context\n");
-
         if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
             fprintf(stderr, "Failed to initialize GLAD\n");
             return 1;
@@ -159,15 +156,47 @@ EXPORT_API int external_main(SDL_Window *window, SDL_GLContext context, int argc
         printf("Loaded GLAD\n");
     }
 
-    const char *new_argv[3];
-    new_argv[0] = "pd";             
-    new_argv[1] = "--gl-version";   
-    new_argv[2] = "4.1 core";      
+    char basedir[1024] = {0};
+    char moddir[1024] = {0};
+    char savedir[1024] = {0};
+    if (localStatePath) {
+        snprintf(basedir, sizeof(basedir), "%s/base", localStatePath);
+        snprintf(moddir, sizeof(moddir), "%s/mods", localStatePath);
+        snprintf(savedir, sizeof(savedir), "%s/saves", localStatePath);
+        if (mkdir(basedir, 0755) != 0 && errno != EEXIST) {
+            fprintf(stderr, "Failed to create directory: %s\n", basedir);
+            return 1;
+        }
+        if (mkdir(moddir, 0755) != 0 && errno != EEXIST) {
+            fprintf(stderr, "Failed to create directory: %s\n", moddir);
+            return 1;
+        }
+        if (mkdir(savedir, 0755) != 0 && errno != EEXIST) {
+            fprintf(stderr, "Failed to create directory: %s\n", savedir);
+            return 1;
+        }
+    } else {
+        strncpy(basedir, "base", sizeof(basedir));
+        strncpy(moddir, "mods", sizeof(moddir));
+        strncpy(savedir, "saves", sizeof(savedir));
+    }
 
-    return main(3, new_argv);
+    const char *new_argv[9];
+    new_argv[0] = "pd";
+    new_argv[1] = "--gl-version";
+    new_argv[2] = "4.1 core";
+    new_argv[3] = "--basedir";
+    new_argv[4] = basedir;
+    new_argv[5] = "--moddir";
+    new_argv[6] = moddir;
+    new_argv[7] = "--savedir";
+    new_argv[8] = savedir;
+
+    return main(9, new_argv);
 }
 
 #endif
+
 
 
 
