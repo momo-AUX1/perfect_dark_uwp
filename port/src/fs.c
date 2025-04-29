@@ -11,6 +11,9 @@
 #include "platform.h"
 #include "utils.h"
 #include "fs.h"
+#ifdef PLATFORM_WIN32
+#include <direct.h>
+#endif
 
 #define DEFAULT_BASEDIR_NAME "data"
 
@@ -279,4 +282,13 @@ FILE *fsFileOpenRead(const char *name)
 void fsFileFree(FILE *f)
 {
 	fclose(f);
+}
+
+s32 fsCreateDir(const char *path)
+{
+#ifdef PLATFORM_WIN32
+	return _mkdir(fsFullPath(path));
+#else
+	return mkdir(fsFullPath(path), 0777);
+#endif
 }
